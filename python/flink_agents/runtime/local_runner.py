@@ -20,7 +20,7 @@ import logging
 import uuid
 from collections import deque
 from concurrent.futures import Future
-from typing import Any, Callable, Dict, List
+from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 from typing_extensions import override
 
@@ -31,10 +31,12 @@ from flink_agents.api.memory_object import MemoryObject, MemoryType
 from flink_agents.api.metric_group import MetricGroup
 from flink_agents.api.resource import Resource, ResourceType
 from flink_agents.api.runner_context import AsyncExecutionResult, RunnerContext
-from flink_agents.plan.agent_plan import AgentPlan
 from flink_agents.plan.configuration import AgentConfiguration
 from flink_agents.runtime.agent_runner import AgentRunner
 from flink_agents.runtime.local_memory_object import LocalMemoryObject
+
+if TYPE_CHECKING:
+    from flink_agents.plan.agent_plan import AgentPlan
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -57,7 +59,7 @@ class LocalRunnerContext(RunnerContext):
         Name of the action being executed.
     """
 
-    __agent_plan: AgentPlan | None
+    __agent_plan: Any
     __key: Any
     events: deque[Event]
     action_name: str
@@ -68,7 +70,7 @@ class LocalRunnerContext(RunnerContext):
     _config: AgentConfiguration
 
     def __init__(
-        self, agent_plan: AgentPlan, key: Any, config: AgentConfiguration
+        self, agent_plan: "AgentPlan", key: Any, config: AgentConfiguration
     ) -> None:
         """Initialize a new context with the given agent and key.
 
@@ -184,6 +186,7 @@ class LocalRunnerContext(RunnerContext):
         self,
         func: Callable[[Any], Any],
         *args: Any,
+        reconciler: Callable[[], Any] | None = None,
         **kwargs: Any,
     ) -> Any:
         """Synchronously execute the provided function. Access to memory
@@ -202,6 +205,7 @@ class LocalRunnerContext(RunnerContext):
         self,
         func: Callable[[Any], Any],
         *args: Any,
+        reconciler: Callable[[], Any] | None = None,
         **kwargs: Any,
     ) -> AsyncExecutionResult:
         """Asynchronously execute the provided function. Access to memory
@@ -265,7 +269,7 @@ class LocalRunner(AgentRunner):
         Internal configration.
     """
 
-    __agent_plan: AgentPlan
+    __agent_plan: Any
     __keyed_contexts: Dict[Any, LocalRunnerContext]
     __outputs: List[Dict[str, Any]]
     __config: AgentConfiguration
@@ -278,6 +282,8 @@ class LocalRunner(AgentRunner):
         agent : Agent
             The agent class to convert and run.
         """
+        from flink_agents.plan.agent_plan import AgentPlan
+
         self.__agent_plan = AgentPlan.from_agent(agent, config)
         self.__keyed_contexts = {}
         self.__outputs = []

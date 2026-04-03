@@ -194,6 +194,7 @@ class RunnerContext(ABC):
         self,
         func: Callable[[Any], Any],
         *args: Any,
+        reconciler: Callable[[], Any] | None = None,
         **kwargs: Any,
     ) -> Any:
         """Synchronously execute the provided function with durable execution support.
@@ -210,6 +211,16 @@ class RunnerContext(ABC):
         will always make the durable_execute call with the same arguments and in the
         same order during job recovery. Otherwise, the behavior is undefined.
 
+        If `reconciler` is provided, it is used only during recovery when the
+        previous durable invocation has not yet produced a persisted terminal
+        outcome. The reconciler may:
+
+        * return a result to provide the recovered successful outcome for this
+          durable call
+        * raise an exception if it cannot provide a successful outcome; the
+          exception is propagated to the caller and no recovered terminal
+          outcome is persisted for this durable call
+
         Usage::
 
             def my_action(event, ctx):
@@ -222,6 +233,10 @@ class RunnerContext(ABC):
             The function to be executed.
         *args : Any
             Positional arguments to pass to the function.
+        reconciler : Callable[[], Any] | None
+            Optional zero-argument reconciler callable used only during recovery.
+            This is a reserved keyword-only parameter and is not forwarded to
+            `func`.
         **kwargs : Any
             Keyword arguments to pass to the function.
 
@@ -236,6 +251,7 @@ class RunnerContext(ABC):
         self,
         func: Callable[[Any], Any],
         *args: Any,
+        reconciler: Callable[[], Any] | None = None,
         **kwargs: Any,
     ) -> "AsyncExecutionResult":
         """Asynchronously execute the provided function with durable execution support.
@@ -248,6 +264,16 @@ class RunnerContext(ABC):
         The action that calls this API should be deterministic, meaning that it
         will always make the durable_execute_async call with the same arguments and in
         the same order during job recovery. Otherwise, the behavior is undefined.
+
+        If `reconciler` is provided, it is used only during recovery when the
+        previous durable invocation has not yet produced a persisted terminal
+        outcome. The reconciler may:
+
+        * return a result to provide the recovered successful outcome for this
+          durable call
+        * raise an exception if it cannot provide a successful outcome; the
+          exception is propagated to the caller and no recovered terminal
+          outcome is persisted for this durable call
 
         Usage::
 
@@ -265,6 +291,10 @@ class RunnerContext(ABC):
             The function to be executed asynchronously.
         *args : Any
             Positional arguments to pass to the function.
+        reconciler : Callable[[], Any] | None
+            Optional zero-argument reconciler callable used only during recovery.
+            This is a reserved keyword-only parameter and is not forwarded to
+            `func`.
         **kwargs : Any
             Keyword arguments to pass to the function.
 
