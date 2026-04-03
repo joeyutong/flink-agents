@@ -186,7 +186,7 @@ class LocalRunnerContext(RunnerContext):
         self,
         func: Callable[[Any], Any],
         *args: Any,
-        reconcile: Callable[[], Any] | None = None,
+        reconciler: Callable[[], Any] | None = None,
         **kwargs: Any,
     ) -> Any:
         """Synchronously execute the provided function. Access to memory
@@ -205,7 +205,7 @@ class LocalRunnerContext(RunnerContext):
         self,
         func: Callable[[Any], Any],
         *args: Any,
-        reconcile: Callable[[], Any] | None = None,
+        reconciler: Callable[[], Any] | None = None,
         **kwargs: Any,
     ) -> AsyncExecutionResult:
         """Asynchronously execute the provided function. Access to memory
