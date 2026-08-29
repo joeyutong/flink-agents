@@ -60,6 +60,7 @@ import org.apache.flink.agents.runtime.eventlog.EventLogWriter;
 import org.apache.flink.agents.runtime.eventlog.FileEventLogger;
 import org.apache.flink.agents.runtime.eventlog.Slf4jEventLogger;
 import org.apache.flink.agents.runtime.memory.Mem0LongTermMemory;
+import org.apache.flink.agents.runtime.metrics.FlinkAgentsMetricGroupImpl;
 import org.apache.flink.api.common.serialization.SerializerConfigImpl;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.base.LongSerializer;
@@ -189,6 +190,29 @@ public class ActionExecutionOperatorTest {
                                             TypeInformation.of(Object.class)
                                                     .createSerializer(new SerializerConfigImpl()))
                                     .generateBusinessKeyIdentity(7L));
+        }
+    }
+
+    @Test
+    void contextKeyResolutionFailureMarksInputEventFailed() throws Exception {
+        try (KeyedOneInputStreamOperatorTestHarness<FailingContextKey, Long, Object> testHarness =
+                new KeyedOneInputStreamOperatorTestHarness<>(
+                        new ActionExecutionOperatorFactory(TestAgent.getAgentPlan(false), true),
+                        (KeySelector<Long, FailingContextKey>) value -> FailingContextKey.INSTANCE,
+                        TypeInformation.of(FailingContextKey.class))) {
+            testHarness.open();
+            ActionExecutionOperator<Long, Object> operator =
+                    (ActionExecutionOperator<Long, Object>) testHarness.getOperator();
+
+            assertThatThrownBy(() -> testHarness.processElement(new StreamRecord<>(1L)))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("context key conversion failed");
+
+            Field metricGroupField = ActionExecutionOperator.class.getDeclaredField("metricGroup");
+            metricGroupField.setAccessible(true);
+            FlinkAgentsMetricGroupImpl metricGroup =
+                    (FlinkAgentsMetricGroupImpl) metricGroupField.get(operator);
+            assertThat(metricGroup.getCounter("numOfInputRunsFailed").getCount()).isEqualTo(1L);
         }
     }
 
@@ -3895,6 +3919,15 @@ public class ActionExecutionOperatorTest {
 
         private Map<String, byte[]> getCompletedStateBytes() {
             return completedStateBytes;
+        }
+    }
+
+    private enum FailingContextKey {
+        INSTANCE;
+
+        @Override
+        public String toString() {
+            throw new IllegalStateException("context key conversion failed");
         }
     }
 
